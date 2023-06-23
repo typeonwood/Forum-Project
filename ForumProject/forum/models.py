@@ -24,4 +24,3 @@ class Reply(models.Model):
     class Meta:
         def __str__(self) -> str:
             return str(self.user.username) + ' - ' + str(self.date_time_added)
-
