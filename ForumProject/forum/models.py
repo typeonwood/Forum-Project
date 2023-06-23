@@ -11,7 +11,7 @@ class Thread(models.Model):
     date_time_added = models.DateTimeField(auto_now_add=True)
     locked = models.BooleanField(default=False)
     content = models.TextField(max_length=10000)
-    media = models.TextField(max_length=5000, blank=True)
+    media_link = models.TextField(max_length=5000, blank=True)
     class Meta:
         def __str__(self) -> str:
             return self.title + ' - ' + str(self.user.username)
