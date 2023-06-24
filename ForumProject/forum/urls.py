@@ -13,5 +13,5 @@ urlpatterns = [
     path('categories/<int:category>/threads/<int:pk>', views.ThreadDetailView.as_view(), name='thread-detail'),
     path('categories/<int:category>/threads/<int:thread>/replies', views.ReplyListView.as_view(), name='reply-list'),
     path('categories/<int:category>/threads/<int:thread>/replies/<int:pk>', views.ReplyDetailView.as_view(), name='reply-detail'),
-    path('categories/<int:category>/threads/<int:origin>/', include(router.urls)),
+    path('id/<int:origin>/', include(router.urls)),
 ]

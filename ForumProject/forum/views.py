@@ -146,7 +146,7 @@ class ThreadVotesViewSet(ModelViewSet):
         else:
             return ThreadVotesSerializer
         
-    def create(self, request, origin, category):
+    def create(self, request, origin):
         queryset = self.request.POST.copy()
         queryset['thread'] = origin
         queryset['user'] = self.request.user.id
@@ -157,7 +157,7 @@ class ThreadVotesViewSet(ModelViewSet):
         else:
             return Response('Invalid data...', status=status.HTTP_400_BAD_REQUEST)
         
-    def update(self, request, origin, category):
+    def update(self, request, origin):
         queryset = self.request.body.copy()
         queryset['thread'] = origin
         queryset['user'] = self.request.user.id
@@ -187,7 +187,7 @@ class ReplyVotesViewSet(ModelViewSet):
         else:
             return ReplyVotesSerializer
         
-    def create(self, request, origin, category):
+    def create(self, request, origin):
         queryset = self.request.POST.copy()
         queryset['reply'] = origin
         queryset['user'] = self.request.user.id
@@ -198,7 +198,7 @@ class ReplyVotesViewSet(ModelViewSet):
         else:
             return Response('Invalid data...', status=status.HTTP_400_BAD_REQUEST)
         
-    def update(self, request, origin, category):
+    def update(self, request, origin):
         queryset = self.request.body.copy()
         queryset['reply'] = origin
         queryset['user'] = self.request.user.id

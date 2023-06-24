@@ -1,6 +1,5 @@
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, UniqueTogetherValidator, HiddenField
 from .models import Category, Thread, Reply, ThreadVotes, ReplyVotes
-from django.contrib.auth.models import User
 
 class CategoryViewerSerializer(ModelSerializer):
     class Meta:
@@ -76,7 +75,6 @@ class ThreadAdminSerializer(ModelSerializer):
         else:
             return ''
         
-# Figured out issues! Views with upvotes/downvotes ready to go. Just needs a little polishing
 class ThreadVotesSerializer(ModelSerializer):
     class Meta:
         model = ThreadVotes
