@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, AllowAny, IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from .models import Category, Thread, Reply, ThreadVotes, ReplyVotes
-from .serializers import CategoryViewerSerializer, CategoryAdminSerializer, ReplyViewerSerializer, ReplyOwnerSerializer, ReplyAdminSerializer, ThreadViewerSerializer, ThreadOwnerSerializer, ThreadAdminSerializer, ThreadVotesSerializer, ReplyVotesSerializer, ThreadVotesAdminSerializer, ReplyVotesAdminSerializer
+from .serializers import CategoryViewerSerializer, CategoryAdminSerializer, ReplyViewerSerializer, ReplyOwnerSerializer, ReplyAdminSerializer, ThreadViewerSerializer, ThreadOwnerSerializer, ThreadAdminSerializer, ThreadVotesSerializer, ReplyVotesSerializer, ThreadVotesAdminSerializer, ReplyVotesAdminSerializer, ThreadVotesUpdateSerializer
 from rest_framework import status
 from .permissions import OwnerPermission
+import copy
 
 class CategoryListView(ListCreateAPIView):
     queryset = Category.objects.all()
@@ -57,21 +58,19 @@ class ThreadListView(ListCreateAPIView):
         
     def create(self, request, category=None):
         if self.request.user.is_superuser:
-            queryset = self.request.POST
-            serialized = ThreadAdminSerializer(queryset)
+            serialized = ThreadAdminSerializer(data=request.data)
             if serialized.is_valid():
                 serialized.save(user=self.request.user, category=Category.objects.get(pk=category))
                 return Response('Your post has been submitted', status=status.HTTP_201_CREATED)
             else:
                 return Response('Invalid data...', status=status.HTTP_400_BAD_REQUEST)
         else:
-            queryset = self.request.POST
-            serialized = ThreadOwnerSerializer(data=queryset)
-            if serialized.is_valid():
+            serialized = ThreadOwnerSerializer(data=request.data)
+            if serialized.is_valid(raise_exception=True):
                 serialized.save(user=self.request.user, category=Category.objects.get(pk=category))
                 return Response('Your post has been submitted', status=status.HTTP_201_CREATED)
             else:
-                return Response('Invalid data...', status=status.HTTP_400_BAD_REQUEST)
+                return Response(self.request.POST, status=status.HTTP_400_BAD_REQUEST)
             
 
 class ThreadDetailView(RetrieveUpdateDestroyAPIView):
@@ -102,8 +101,7 @@ class ReplyListView(ListCreateAPIView):
             self.permission_classes = [IsAdminUser]
 
     def create(self, request, thread=None):
-        queryset = self.request.POST
-        serialized = ReplyOwnerSerializer(data=queryset)
+        serialized = ReplyOwnerSerializer(data=request.data)
         if serialized.is_valid():
             serialized.save(user=self.request.user, thread=Thread.objects.get(pk=thread))
             return Response('Your reply has been submitted', status=status.HTTP_201_CREATED)
@@ -143,22 +141,13 @@ class ThreadVotesViewSet(ModelViewSet):
     def get_serializer_class(self):
         if self.request.user.is_superuser:
             return ThreadVotesAdminSerializer
+        elif self.request.method == 'PUT' or 'PATCH':
+            return ThreadVotesUpdateSerializer
         else:
             return ThreadVotesSerializer
         
     def create(self, request, origin):
         queryset = self.request.POST.copy()
-        queryset['thread'] = origin
-        queryset['user'] = self.request.user.id
-        serialized = ThreadVotesSerializer(data=queryset)
-        if serialized.is_valid():
-            serialized.save()
-            return Response(status=status.HTTP_201_CREATED)
-        else:
-            return Response('Invalid data...', status=status.HTTP_400_BAD_REQUEST)
-        
-    def update(self, request, origin):
-        queryset = self.request.body.copy()
         queryset['thread'] = origin
         queryset['user'] = self.request.user.id
         serialized = ThreadVotesSerializer(data=queryset)

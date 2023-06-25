@@ -60,7 +60,7 @@ class ThreadViewerSerializer(ModelSerializer):
 class ThreadOwnerSerializer(ModelSerializer):
     class Meta:
         model = Thread
-        fields = ['title', 'content',]
+        fields = ['title', 'content']
 
 class ThreadAdminSerializer(ModelSerializer):
     replies = SerializerMethodField()
@@ -85,6 +85,11 @@ class ThreadVotesSerializer(ModelSerializer):
                 fields=['thread', 'user']
             )
         ]
+
+class ThreadVotesUpdateSerializer(ModelSerializer):
+    class Meta:
+        model = ThreadVotes
+        fields = ['upvote']
 
 class ThreadVotesAdminSerializer(ModelSerializer):
     class Meta:
