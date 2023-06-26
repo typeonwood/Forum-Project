@@ -1,5 +1,6 @@
-from rest_framework.serializers import ModelSerializer, SerializerMethodField, UniqueTogetherValidator, HiddenField
+from rest_framework.serializers import ModelSerializer, SerializerMethodField, UniqueTogetherValidator, PrimaryKeyRelatedField
 from .models import Category, Thread, Reply, ThreadVotes, ReplyVotes
+from django.contrib.auth.models import User
 
 class CategoryViewerSerializer(ModelSerializer):
     class Meta:
@@ -107,8 +108,15 @@ class ReplyVotesSerializer(ModelSerializer):
             )
         ]
 
+class ReplyVotesUpdateSerializer(ModelSerializer):
+    class Meta:
+        model = ReplyVotes
+        fields = ['upvote']
+
+
 class ReplyVotesAdminSerializer(ModelSerializer):
     class Meta:
         model = ReplyVotes
         fields = '__all__'
+
 

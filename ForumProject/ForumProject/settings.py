@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'djoser',
     'django_extensions',
     'django_filters',
+    'rest_framework_nested',
     'forum',
 ]
 

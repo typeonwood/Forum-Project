@@ -1,13 +1,16 @@
-from django.shortcuts import render
+from django.conf import settings
+if not settings.configured:
+    settings.configure(DEBUG=True)
+
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, AllowAny, IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from .models import Category, Thread, Reply, ThreadVotes, ReplyVotes
-from .serializers import CategoryViewerSerializer, CategoryAdminSerializer, ReplyViewerSerializer, ReplyOwnerSerializer, ReplyAdminSerializer, ThreadViewerSerializer, ThreadOwnerSerializer, ThreadAdminSerializer, ThreadVotesSerializer, ReplyVotesSerializer, ThreadVotesAdminSerializer, ReplyVotesAdminSerializer, ThreadVotesUpdateSerializer
+from .serializers import CategoryViewerSerializer, CategoryAdminSerializer, ReplyViewerSerializer, ReplyOwnerSerializer, ReplyAdminSerializer, ThreadViewerSerializer, ThreadOwnerSerializer, ThreadAdminSerializer, ThreadVotesSerializer, ReplyVotesSerializer, ThreadVotesAdminSerializer, ReplyVotesAdminSerializer, ThreadVotesUpdateSerializer, ReplyVotesUpdateSerializer
 from rest_framework import status
 from .permissions import OwnerPermission
-import copy
+from django.http import JsonResponse
 
 class CategoryListView(ListCreateAPIView):
     queryset = Category.objects.all()
@@ -80,7 +83,7 @@ class ThreadDetailView(RetrieveUpdateDestroyAPIView):
             self.permission_classes = [AllowAny]
         else:
             self.permission_classes = [IsAdminUser | OwnerPermission]
-        return super(ThreadDetailView, self).get_permissions()
+        return super().get_permissions()
     
     def get_serializer_class(self):
         if self.request.user.is_superuser:
@@ -99,8 +102,9 @@ class ReplyListView(ListCreateAPIView):
             pass
         else:
             self.permission_classes = [IsAdminUser]
+        return super(ReplyListView, self).get_permissions()
 
-    def create(self, request, thread=None):
+    def create(self, request, category, thread=None):
         serialized = ReplyOwnerSerializer(data=request.data)
         if serialized.is_valid():
             serialized.save(user=self.request.user, thread=Thread.objects.get(pk=thread))
@@ -123,7 +127,7 @@ class ReplyDetailView(RetrieveUpdateDestroyAPIView):
             self.permission_classes = [AllowAny]
         else:
             self.permission_classes = [IsAdminUser | OwnerPermission]
-        return super(ThreadDetailView, self).get_permissions()
+        return super().get_permissions()
     
 
 class ThreadVotesViewSet(ModelViewSet):
@@ -146,9 +150,9 @@ class ThreadVotesViewSet(ModelViewSet):
         else:
             return ThreadVotesSerializer
         
-    def create(self, request, origin):
+    def create(self, request, thread=None):
         queryset = self.request.POST.copy()
-        queryset['thread'] = origin
+        queryset['thread'] = thread
         queryset['user'] = self.request.user.id
         serialized = ThreadVotesSerializer(data=queryset)
         if serialized.is_valid():
@@ -169,32 +173,22 @@ class ReplyVotesViewSet(ModelViewSet):
             self.permission_classes = [OwnerPermission]
         else:
             self.permission_classes = [IsAdminUser | OwnerPermission]
-        return super(ReplyVotesViewSet, self).get_permissions()
+        return super(ModelViewSet, self).get_permissions()
     def get_serializer_class(self):
         if self.request.user.is_superuser:
             return ReplyVotesAdminSerializer
+        elif self.request.method == 'PUT' or 'PATCH':
+            return ReplyVotesUpdateSerializer
         else:
             return ReplyVotesSerializer
         
-    def create(self, request, origin):
+    def create(self, request, thread_pk=None, reply=None):
         queryset = self.request.POST.copy()
-        queryset['reply'] = origin
-        queryset['user'] = self.request.user.id
+        queryset['reply'] = reply
+        queryset['user'] = self.request.user.pk
         serialized = ReplyVotesSerializer(data=queryset)
-        if serialized.is_valid():
+        if serialized.is_valid(raise_exception=True):
             serialized.save()
-            return Response(status=status.HTTP_201_CREATED)
+            return Response(serialized.data, status=status.HTTP_201_CREATED)
         else:
-            return Response('Invalid data...', status=status.HTTP_400_BAD_REQUEST)
-        
-    def update(self, request, origin):
-        queryset = self.request.body.copy()
-        queryset['reply'] = origin
-        queryset['user'] = self.request.user.id
-        serialized = ReplyVotesSerializer(data=queryset)
-        if serialized.is_valid():
-            serialized.save()
-            return Response(status=status.HTTP_201_CREATED)
-        else:
-            return Response('Invalid data...', status=status.HTTP_400_BAD_REQUEST)
-
+            return Response("Oops...couldn't vote", status=status.HTTP_400_BAD_REQUEST)
