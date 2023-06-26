@@ -1,7 +1,3 @@
-from django.conf import settings
-if not settings.configured:
-    settings.configure(DEBUG=True)
-
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, AllowAny, IsAuthenticated
@@ -10,7 +6,6 @@ from .models import Category, Thread, Reply, ThreadVotes, ReplyVotes
 from .serializers import CategoryViewerSerializer, CategoryAdminSerializer, ReplyViewerSerializer, ReplyOwnerSerializer, ReplyAdminSerializer, ThreadViewerSerializer, ThreadOwnerSerializer, ThreadAdminSerializer, ThreadVotesSerializer, ReplyVotesSerializer, ThreadVotesAdminSerializer, ReplyVotesAdminSerializer, ThreadVotesUpdateSerializer, ReplyVotesUpdateSerializer
 from rest_framework import status
 from .permissions import OwnerPermission
-from django.http import JsonResponse
 
 class CategoryListView(ListCreateAPIView):
     queryset = Category.objects.all()
@@ -20,7 +15,7 @@ class CategoryListView(ListCreateAPIView):
             self.permission_classes = [AllowAny]
         else:
             self.permission_classes = [IsAdminUser]
-        return super(CategoryListView, self).get_permissions()
+        return super().get_permissions()
 
     def list(self, request):
         if self.request.user.is_superuser:
@@ -47,7 +42,7 @@ class ThreadListView(ListCreateAPIView):
             self.permission_classes = [AllowAny]
         else:
             self.permission_classes = [IsAuthenticated]
-        return super(ThreadListView, self).get_permissions()
+        return super().get_permissions()
 
     def list(self, request, category=None):
         if self.request.user.is_superuser:
@@ -99,10 +94,10 @@ class ReplyListView(ListCreateAPIView):
     serializer_class = ReplyAdminSerializer
     def get_permissions(self):
         if self.request.method == 'POST':
-            pass
+            self.permission_classes = [IsAuthenticated]
         else:
             self.permission_classes = [IsAdminUser]
-        return super(ReplyListView, self).get_permissions()
+        return super().get_permissions()
 
     def create(self, request, category, thread=None):
         serialized = ReplyOwnerSerializer(data=request.data)
@@ -185,7 +180,7 @@ class ReplyVotesViewSet(ModelViewSet):
     def create(self, request, thread_pk=None, reply=None):
         queryset = self.request.POST.copy()
         queryset['reply'] = reply
-        queryset['user'] = self.request.user.pk
+        queryset['user'] = self.request.user.id
         serialized = ReplyVotesSerializer(data=queryset)
         if serialized.is_valid(raise_exception=True):
             serialized.save()

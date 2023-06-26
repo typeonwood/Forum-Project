@@ -9,20 +9,20 @@ import json
 class TestCategoryViews(APITestCase):
     def setUp(self):
         self.payload = {'title': 'whales'}
+        self.admin = User.objects.create_superuser(username='testy', password='testy')
+        self.category_list = Category.objects.all()
 
     def test_list_viewer(self):
         response = self.client.get(reverse('categories-list'))
-        category_list = Category.objects.all()
-        serialized = serializers.CategoryViewerSerializer(category_list, many=True)
+        serialized = serializers.CategoryViewerSerializer(self.category_list, many=True)
         self.assertEqual(response.data, serialized.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_list_admin(self):
-        self.user = User.objects.create_superuser(username='testy', password='testy')
+        self.user = self.admin
         self.client.force_authenticate(user=self.user)
         response = self.client.get(reverse('categories-list'))
-        category_list = Category.objects.all()
-        serialized = serializers.CategoryAdminSerializer(category_list, many=True)
+        serialized = serializers.CategoryAdminSerializer(self.category_list, many=True)
         self.assertEqual(response.data, serialized.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -35,7 +35,7 @@ class TestCategoryViews(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_create_admin(self):
-        self.user = User.objects.create_superuser(username='testy', password='testy')
+        self.user = self.admin
         self.client.force_authenticate(user=self.user)
         response = self.client.post(
             reverse('categories-list'),
@@ -49,26 +49,28 @@ class TestCategoryDetailView(APITestCase):
     def setUp(self):
         self.whales = Category.objects.create(title='whales')
         self.payload = {'title': 'dolphins'}
+        self.admin = User.objects.create_superuser(username='testy', password='testy')
+        self.kwargs = {'pk': self.whales.pk}
 
     def test_update_admin(self):
-        self.user = User.objects.create_superuser(username='testy', password='testy')
+        self.user = self.admin
         self.client.force_authenticate(user=self.user)
         response = self.client.put(
-            reverse('categories-detail', kwargs={'pk': self.whales.pk}),
+            reverse('categories-detail', kwargs=self.kwargs),
             data = json.dumps(self.payload),
             content_type = 'application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_delete_admin(self):
-        self.user = User.objects.create_superuser(username='testy', password='testy')
+        self.user = self.admin
         self.client.force_authenticate(user=self.user)
-        response = self.client.delete(reverse('categories-detail', kwargs={'pk': self.whales.pk}))
+        response = self.client.delete(reverse('categories-detail', kwargs=self.kwargs))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_unauth(self):
         response = self.client.put(
-            reverse('categories-detail', kwargs={'pk': self.whales.pk}),
+            reverse('categories-detail', kwargs=self.kwargs),
             data = json.dumps(self.payload),
             content_type = 'application/json'
         )
@@ -78,28 +80,28 @@ class TestCategoryDetailView(APITestCase):
 class TestThreadListView(APITestCase):
     def setUp(self):
         self.category = Category.objects.create(title='whales')
+        self.thread_list = Thread.objects.filter(category=self.category.pk)
+        self.user = User.objects.create(username='testy', password='testy')
+        self.client.force_authenticate(user=self.user)
+        self.kwargs = {'category': self.category.pk}
 
     def test_list_viewer(self):
-        response = self.client.get(reverse('thread-list', kwargs={'category': self.category.pk}))
-        thread_list = Thread.objects.filter(category=self.category.pk)
-        serialized = serializers.ThreadViewerSerializer(thread_list, many=True)
+        response = self.client.get(reverse('thread-list', kwargs=self.kwargs))
+        serialized = serializers.ThreadViewerSerializer(self.thread_list, many=True)
         self.assertEqual(response.data, serialized.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_list_admin(self):
-        self.user = User.objects.create_superuser(username='testy', password='testy')
-        self.client.force_authenticate(user=self.user)
-        response = self.client.get(reverse('thread-list', kwargs={'category': self.category.pk}))
-        thread_list = Thread.objects.filter(category=self.category.pk)
-        serialized = serializers.ThreadAdminSerializer(thread_list, many=True)
+        self.user.is_superuser
+        response = self.client.get(reverse('thread-list', kwargs=self.kwargs))
+        serialized = serializers.ThreadAdminSerializer(self.thread_list, many=True)
         self.assertEqual(response.data, serialized.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_create_owner(self):
-        self.user = User.objects.create(username='testy', password='testy')
         self.client.force_authenticate(user=self.user)
         response = self.client.post(
-            reverse('thread-list', kwargs={'category': self.category.pk}),
+            reverse('thread-list', kwargs=self.kwargs),
             data = json.dumps({'title': 'a thread', 'content': 'some slay content'}),
             content_type = 'application/json'
         )
@@ -109,71 +111,65 @@ class TestThreadListView(APITestCase):
 class TestThreadDetailView(APITestCase):
     def setUp(self):
         self.category = Category.objects.create(title='whales')
-        self.new_user = User.objects.create(username='test')
+        self.user = User.objects.create(username='test')
+        self.client.force_authenticate(user=self.user)
         self.thread = Thread.objects.create(
             title = 'a title',
             category = self.category,
-            user = self.new_user,
+            user = self.user,
             content = 'this is a post'
         )
-        self.reply1 = Reply.objects.create(thread=self.thread, user=self.new_user, content='some content')
+        self.reply1 = Reply.objects.create(thread=self.thread, user=self.user, content='some content')
         self.reply2 = self.reply1
+        self.kwargs = {'category': self.category.pk, 'pk': self.thread.pk}
         
     def test_retrieve(self):
-        response = self.client.get(reverse('thread-detail', kwargs={'category': self.category.pk, 'pk': self.thread.pk}))
-        thread = Thread.objects.get(pk=self.thread.pk)
-        serialized = serializers.ThreadViewerSerializer(thread)
+        response = self.client.get(reverse('thread-detail', kwargs=self.kwargs))
+        serialized = serializers.ThreadViewerSerializer(self.thread)
         self.assertEqual(response.data, serialized.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_admin_retrieve(self):
-        self.user = User.objects.create_superuser(username='testy')
-        self.client.force_authenticate(user=self.user)
-        response = self.client.get(reverse('thread-detail', kwargs={'category': self.category.pk, 'pk': self.thread.pk}))
+        self.user.is_superuser
+        response = self.client.get(reverse('thread-detail', kwargs=self.kwargs))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_unauth_update(self):
+        self.client.logout()
         response = self.client.put(
-            reverse('thread-detail', kwargs={'category': self.category.pk, 'pk': self.thread.pk}),
-            data = json.dumps({'title': 'nothing'}),
+            reverse('thread-detail', kwargs=self.kwargs),
+            data = json.dumps({'title': 'nothing', 'content': 'less than nothing'}),
             content_type = 'application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_auth_update(self):
-        self.user = self.new_user
-        self.client.force_authenticate(user=self.user)
         response = self.client.put(
-            reverse('thread-detail', kwargs={'category': self.category.pk, 'pk': self.thread.pk}),
+            reverse('thread-detail', kwargs=self.kwargs),
             data = json.dumps({'title': 'nothing', 'content': 'also nothing'}),
             content_type = 'application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_delete(self):
-        self.user = self.new_user
-        self.client.force_authenticate(user=self.user)
-        response = self.client.delete(reverse('thread-detail', kwargs={'category': self.category.pk, 'pk': self.thread.pk}))
+        response = self.client.delete(reverse('thread-detail', kwargs=self.kwargs))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class TestReplyListView(APITestCase):
     def setUp(self):
         self.category = Category.objects.create(title='whales')
-        self.new_user = User.objects.create(username='test')
+        self.user = User.objects.create(username='test')
+        self.client.force_authenticate(user=self.user)
         self.thread = Thread.objects.create(
             title = 'a title',
             category = self.category,
-            user = self.new_user,
+            user = self.user,
             content = 'this is a post'
         )
-        self.reply1 = Reply.objects.create(thread=self.thread, user=self.new_user, content='some content')
+        self.reply1 = Reply.objects.create(thread=self.thread, user=self.user, content='some content')
         self.reply2 = self.reply1
         self.kwargs = {'category': self.category.pk, 'thread': self.thread.pk}
-
-    def test_unauth_get(self):
-        response = self.client.get(reverse('reply-list', kwargs=self.kwargs))
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_admin_get(self):
         self.user = User.objects.create_superuser(username='testy')
@@ -181,9 +177,12 @@ class TestReplyListView(APITestCase):
         response = self.client.get(reverse('reply-list', kwargs=self.kwargs))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_unauth_get(self):
+        self.client.logout()
+        response = self.client.get(reverse('reply-list', kwargs=self.kwargs))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_create(self):
-        self.user = self.new_user
-        self.client.force_authenticate(user=self.user)
         response = self.client.post(
             reverse('reply-list', kwargs=self.kwargs),
             data = json.dumps({'content': 'some content'}),
@@ -195,24 +194,25 @@ class TestReplyListView(APITestCase):
 class TestReplyDetailView(APITestCase):
     def setUp(self):
         self.category = Category.objects.create(title='whales')
-        self.new_user = User.objects.create(username='test')
+        self.user = User.objects.create(username='test')
+        self.client.force_authenticate(user=self.user)
         self.thread = Thread.objects.create(
             title = 'a title',
             category = self.category,
-            user = self.new_user,
+            user = self.user,
             content = 'this is a post'
         )
-        self.reply1 = Reply.objects.create(thread=self.thread, user=self.new_user, content='some content')
+        self.reply1 = Reply.objects.create(thread=self.thread, user=self.user, content='some content')
         self.kwargs = {'category': self.category.pk, 'thread': self.thread.pk, 'pk': self.reply1.pk}
 
     def test_retrieve(self):
         response = self.client.get(reverse('reply-detail', kwargs=self.kwargs))
-        reply = Reply.objects.get(pk=self.reply1.pk)
-        serialized = serializers.ReplyViewerSerializer(reply)
+        serialized = serializers.ReplyViewerSerializer(self.reply1)
         self.assertEqual(response.data, serialized.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_unauth_update(self):
+        self.client.logout()
         response = self.client.put(
             reverse('reply-detail', kwargs=self.kwargs),
             data = json.dumps({'content': 'some dumb content'}),
@@ -221,8 +221,6 @@ class TestReplyDetailView(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_auth_update(self):
-        self.user = self.new_user
-        self.client.force_authenticate(user=self.user)
         response = self.client.put(
             reverse('reply-detail', kwargs=self.kwargs),
             data = json.dumps({'content': 'some dumb content'}),
@@ -231,7 +229,6 @@ class TestReplyDetailView(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_delete(self):
-        self.user = self.new_user
         self.user.is_superuser = True
         self.client.force_authenticate(user=self.user)
         response = self.client.delete(reverse('reply-detail', kwargs=self.kwargs))
@@ -243,18 +240,22 @@ class TestThreadVotesViewSet(APITestCase):
         self.thread = Thread.objects.create(
             title = 'a title',
             category = Category.objects.create(title='whales'),
-            user = User.objects.create(username='test'),
+            user = User.objects.create(username='test', password='test'),
             content = 'this is a post'
         )
+        self.user = User.objects.get(username='test')
+        self.client.force_authenticate(user=self.user)
+        self.vote = ThreadVotes.objects.create(upvote=True, user=self.user, thread=self.thread)
 
     def test_list(self):
-        self.user = User.objects.create_superuser(username='testy', password='testy')
+        self.user = User.objects.create_superuser(username='testy')
         self.client.force_authenticate(user=self.user)
         response = self.client.get(reverse('thread_votes-list', kwargs={'thread': self.thread.pk}))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_create(self):
-        self.user = User.objects.create(username='testy', password='testy')
+        self.vote.delete()
+        self.user.is_superuser = True
         self.client.force_authenticate(user=self.user)
         response = self.client.post(
             reverse('thread_votes-list', kwargs={'thread': self.thread.pk}),
@@ -263,61 +264,62 @@ class TestThreadVotesViewSet(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_bad_create(self):
+        response = self.client.post(
+            reverse('thread_votes-list', kwargs={'thread': self.thread.pk}),
+            data = json.dumps({'upvote': True}),
+            content_type = 'application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_unauth_update(self):
-        self.user = User.objects.create(username='testy', password='testy')
-        vote = ThreadVotes.objects.create(thread=self.thread, user=self.user, upvote=True)
+        self.client.logout()
         response = self.client.patch(
-            reverse('thread_votes-detail', kwargs={'thread': self.thread.pk, 'pk': vote.pk}),
+            reverse('thread_votes-detail', kwargs={'thread': self.thread.pk, 'pk': self.vote.pk}),
             data = json.dumps({'upvote': False}),
             content_type = 'application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_auth_update(self):
-        self.user = User.objects.create(username='testy', password='testy')
-        self.client.force_authenticate(user=self.user)
-        vote = ThreadVotes.objects.create(thread=self.thread, user=self.user, upvote=True)
         response = self.client.put(
-            reverse('thread_votes-detail', kwargs={'thread': self.thread.pk, 'pk': vote.pk}),
+            reverse('thread_votes-detail', kwargs={'thread': self.thread.pk, 'pk': self.vote.pk}),
             data = json.dumps({'upvote': False}),
             content_type = 'application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_admin_delete(self):
-        user = User.objects.create(username='testy', password='testy')
-        vote = ThreadVotes.objects.create(thread=self.thread, user=user, upvote=True)
         self.user = User.objects.create_superuser(username='testy1', password='testy')
         self.client.force_authenticate(user=self.user)
         response = self.client.delete(
-            reverse('thread_votes-detail', kwargs={'thread': self.thread.pk, 'pk': vote.pk})
+            reverse('thread_votes-detail', kwargs={'thread': self.thread.pk, 'pk': self.vote.pk})
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_owner_delete(self):
-        self.user = User.objects.create(username='testy', password='testy')
-        self.client.force_authenticate(user=self.user)
-        vote = ThreadVotes.objects.create(thread=self.thread, user=self.user, upvote=True)
         response = self.client.delete(
-            reverse('thread_votes-detail', kwargs={'thread': self.thread.pk, 'pk': vote.pk})
+            reverse('thread_votes-detail', kwargs={'thread': self.thread.pk, 'pk': self.vote.pk})
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class TestReplyVotesViewSet(APITestCase):
     def setUp(self):
-        self.new_user = User.objects.create(username='testy', password='testy')
+        self.user = User.objects.create(username='testy', password='testy')
+        self.client.force_authenticate(user=self.user)
         self.thread = Thread.objects.create(
             title = 'a title',
             category = Category.objects.create(title='whales'),
-            user = self.new_user,
+            user = self.user,
             content = 'this is a post'
         )
         self.reply = Reply.objects.create(
             thread = self.thread,
-            user = self.new_user,
+            user = self.user,
             content = 'this is a post'
         )
+        self.vote = ReplyVotes.objects.create(upvote=False, user=self.user, reply=self.reply)
 
     def test_list(self):
         self.user = User.objects.create_superuser(username='testy1', password='testy')
@@ -326,8 +328,7 @@ class TestReplyVotesViewSet(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_create(self):
-        self.user = self.new_user
-        self.client.force_authenticate(user=self.user)
+        self.vote.delete()
         response = self.client.post(
             reverse('reply_votes-list', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk}),
             data = json.dumps({'upvote': True}),
@@ -335,42 +336,42 @@ class TestReplyVotesViewSet(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_bad_create(self):
+        response = self.client.post(
+            reverse('reply_votes-list', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk}),
+            data = json.dumps({'upvote': True}),
+            content_type = 'application/json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_unauth_update(self):
-        self.user = self.new_user
-        vote = ReplyVotes.objects.create(reply=self.reply, user=self.user, upvote=True)
+        self.client.logout()
         response = self.client.patch(
-            reverse('reply_votes-detail', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk, 'pk': vote.pk}),
-            data = json.dumps({'upvote': False}),
+            reverse('reply_votes-detail', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk, 'pk': self.vote.pk}),
+            data = json.dumps({'upvote': True}),
             content_type = 'application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_auth_update(self):
-        self.user = self.new_user
-        self.client.force_authenticate(user=self.user)
-        vote = ReplyVotes.objects.create(reply=self.reply, user=self.user, upvote=True)
         response = self.client.put(
-            reverse('reply_votes-detail', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk, 'pk': vote.pk}),
-            data = json.dumps({'upvote': False}),
+            reverse('reply_votes-detail', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk, 'pk': self.vote.pk}),
+            data = json.dumps({'upvote': True}),
             content_type = 'application/json'
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_admin_delete(self):
-        vote = ReplyVotes.objects.create(reply=self.reply, user=self.new_user, upvote=True)
-        self.user = User.objects.create_superuser(username='testy1', password='testy')
+        self.user.is_superuser = True
         self.client.force_authenticate(user=self.user)
         response = self.client.delete(
-            reverse('reply_votes-detail', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk, 'pk': vote.pk})
+            reverse('reply_votes-detail', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk, 'pk': self.vote.pk})
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_owner_delete(self):
-        self.user = self.new_user
-        self.client.force_authenticate(user=self.user)
-        vote = ReplyVotes.objects.create(reply=self.reply, user=self.user, upvote=True)
         response = self.client.delete(
-            reverse('reply_votes-detail', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk, 'pk': vote.pk})
+            reverse('reply_votes-detail', kwargs={'reply': self.reply.pk, 'thread_pk': self.thread.pk, 'pk': self.vote.pk})
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 

@@ -29,8 +29,12 @@ class ThreadVotes(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     thread = models.ForeignKey(Thread, on_delete=models.CASCADE)
     upvote = models.BooleanField(default=True)
+    class Meta:
+        unique_together = ['user', 'thread']
 
 class ReplyVotes(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     reply = models.ForeignKey(Reply, on_delete=models.CASCADE)
     upvote = models.BooleanField(default=True)
+    class Meta:
+        unique_together = ['user', 'reply']

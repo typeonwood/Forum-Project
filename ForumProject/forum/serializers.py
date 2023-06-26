@@ -1,4 +1,4 @@
-from rest_framework.serializers import ModelSerializer, SerializerMethodField, UniqueTogetherValidator, PrimaryKeyRelatedField
+from rest_framework.serializers import ModelSerializer, SerializerMethodField, UniqueTogetherValidator, IntegerField
 from .models import Category, Thread, Reply, ThreadVotes, ReplyVotes
 from django.contrib.auth.models import User
 
@@ -80,12 +80,7 @@ class ThreadVotesSerializer(ModelSerializer):
     class Meta:
         model = ThreadVotes
         fields = ['upvote', 'thread', 'user']
-        validators = [
-            UniqueTogetherValidator(
-                queryset=ThreadVotes.objects.all(),
-                fields=['thread', 'user']
-            )
-        ]
+        
 
 class ThreadVotesUpdateSerializer(ModelSerializer):
     class Meta:
@@ -101,12 +96,6 @@ class ReplyVotesSerializer(ModelSerializer):
     class Meta:
         model = ReplyVotes
         fields = ['upvote', 'reply', 'user']
-        validators = [
-            UniqueTogetherValidator(
-                queryset=ThreadVotes.objects.all(),
-                fields=['reply', 'user']
-            )
-        ]
 
 class ReplyVotesUpdateSerializer(ModelSerializer):
     class Meta:
