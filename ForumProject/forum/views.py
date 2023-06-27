@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, AllowAny, IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from .models import Category, Thread, Reply, ThreadVotes, ReplyVotes
-from .serializers import CategoryViewerSerializer, CategoryAdminSerializer, ReplyViewerSerializer, ReplyOwnerSerializer, ReplyAdminSerializer, ThreadViewerSerializer, ThreadOwnerSerializer, ThreadAdminSerializer, ThreadVotesSerializer, ReplyVotesSerializer, ThreadVotesAdminSerializer, ReplyVotesAdminSerializer, ThreadVotesUpdateSerializer, ReplyVotesUpdateSerializer
+from .serializers import CategoryViewerSerializer, CategoryAdminSerializer, ReplyViewerSerializer, ReplyOwnerSerializer, ReplyAdminSerializer, ThreadViewerSerializer, ThreadOwnerSerializer, ThreadAdminSerializer, ThreadVotesSerializer, ReplyVotesSerializer, ThreadVotesAdminSerializer, ReplyVotesAdminSerializer, ThreadVotesUpdateSerializer, ReplyVotesUpdateSerializer, ThreadListSerializer, ThreadAdminListSerializer
 from rest_framework import status
 from .permissions import OwnerPermission
 
@@ -37,6 +37,9 @@ class CategoryDetailView(RetrieveUpdateDestroyAPIView):
 class ThreadListView(ListCreateAPIView):
     queryset = Thread.objects.all()
     serializer_class = ThreadAdminSerializer
+    ordering_fields = ['date_time_added', 'upvotes', 'replies']
+    search_fields = ['title', 'user', 'content']
+    filterset_fields = {'date_time_added': ['gte', 'lte'], 'user': ['exact'], 'locked': ['exact']}
     def get_permissions(self):
         if self.request.method == 'GET':
             self.permission_classes = [AllowAny]
@@ -47,11 +50,11 @@ class ThreadListView(ListCreateAPIView):
     def list(self, request, category=None):
         if self.request.user.is_superuser:
             queryset = Thread.objects.filter(category=Category.objects.get(pk=category))
-            serialized = ThreadAdminSerializer(queryset, many=True)
+            serialized = ThreadAdminListSerializer(queryset, many=True)
             return Response(serialized.data, status=status.HTTP_200_OK)
         else:
             queryset = Thread.objects.filter(category=Category.objects.get(pk=category))
-            serialized = ThreadViewerSerializer(queryset, many=True)
+            serialized = ThreadListSerializer(queryset, many=True)
             return Response(serialized.data, status=status.HTTP_200_OK)
         
     def create(self, request, category=None):
@@ -73,6 +76,7 @@ class ThreadListView(ListCreateAPIView):
 
 class ThreadDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Thread.objects.all()
+    ordering_fields = ['date_time_added', 'upvotes']
     def get_permissions(self):
         if self.request.method == 'GET':
             self.permission_classes = [AllowAny]
@@ -92,6 +96,9 @@ class ThreadDetailView(RetrieveUpdateDestroyAPIView):
 class ReplyListView(ListCreateAPIView):
     queryset = Reply.objects.all()
     serializer_class = ReplyAdminSerializer
+    ordering_fields = ['date_time_added', 'upvotes', 'replies']
+    search_fields = ['user', 'thread', 'content']
+    filterset_fields = {'date_time_added': ['gte', 'lte'], 'user': ['exact'], 'thread': ['exact']}
     def get_permissions(self):
         if self.request.method == 'POST':
             self.permission_classes = [IsAuthenticated]
@@ -127,6 +134,8 @@ class ReplyDetailView(RetrieveUpdateDestroyAPIView):
 
 class ThreadVotesViewSet(ModelViewSet):
     queryset = ThreadVotes.objects.all()
+    search_fields = ['user', 'thread']
+    filterset_fields = ['upvote', 'user', 'thread']
     def get_permissions(self):
         if self.request.method == 'GET':
             self.permission_classes = [IsAdminUser]
@@ -159,6 +168,8 @@ class ThreadVotesViewSet(ModelViewSet):
 
 class ReplyVotesViewSet(ModelViewSet):
     queryset = ReplyVotes.objects.all()
+    search_fields = ['user', 'reply']
+    filterset_fields = ['upvote', 'user', 'reply']
     def get_permissions(self):
         if self.request.method == 'GET':
             self.permission_classes = [IsAdminUser]

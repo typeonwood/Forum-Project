@@ -36,19 +36,11 @@ class ReplyAdminSerializer(ModelSerializer):
         model = Reply
         fields = '__all__'
 
-class ThreadViewerSerializer(ModelSerializer):
-    replies = SerializerMethodField()
+class ThreadListSerializer(ModelSerializer):
     upvotes = SerializerMethodField()
     class Meta:
         model = Thread
-        fields = ['title', 'category', 'user', 'date_time_added', 'upvotes', 'locked', 'content', 'replies']
-    def get_replies(self, obj):
-        if Reply.objects.filter(thread=obj.id).exists():
-            queryset = Reply.objects.filter(thread=obj.id).order_by('date_time_added')
-            serialized = ReplyViewerSerializer(queryset, many=True)
-            return serialized.data
-        else:
-            return ''
+        fields = ['title', 'category', 'user', 'date_time_added', 'upvotes', 'locked']
     def get_upvotes(self, obj):
         if ThreadVotes.objects.filter(thread=obj.id).exists():    
             upvotes = ThreadVotes.objects.filter(thread=obj.id, upvote=True).count()
@@ -58,10 +50,32 @@ class ThreadViewerSerializer(ModelSerializer):
         else:
             return 0
 
+class ThreadViewerSerializer(ThreadListSerializer):
+    replies = SerializerMethodField()
+    class Meta(ThreadListSerializer.Meta):
+        fields = ['title', 'category', 'user', 'date_time_added', 'upvotes', 'locked', 'content', 'replies']
+    def get_replies(self, obj):
+        if Reply.objects.filter(thread=obj.id).exists():
+            queryset = Reply.objects.filter(thread=obj.id).order_by('date_time_added')
+            serialized = ReplyViewerSerializer(queryset, many=True)
+            return serialized.data
+        else:
+            return ''
+
 class ThreadOwnerSerializer(ModelSerializer):
     class Meta:
         model = Thread
         fields = ['title', 'content']
+
+class ThreadAdminListSerializer(ThreadListSerializer):
+    replies = SerializerMethodField()
+    class Meta(ThreadListSerializer.Meta):
+        fields = '__all__'
+    def get_replies(self, obj):
+        if Reply.objects.filter(thread=obj.id).exists():
+            return Reply.objects.filter(thread=obj.id).count()
+        else: return 'No replies'
+
 
 class ThreadAdminSerializer(ModelSerializer):
     replies = SerializerMethodField()

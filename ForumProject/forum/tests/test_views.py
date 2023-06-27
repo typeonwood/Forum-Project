@@ -87,14 +87,14 @@ class TestThreadListView(APITestCase):
 
     def test_list_viewer(self):
         response = self.client.get(reverse('thread-list', kwargs=self.kwargs))
-        serialized = serializers.ThreadViewerSerializer(self.thread_list, many=True)
+        serialized = serializers.ThreadListSerializer(self.thread_list, many=True)
         self.assertEqual(response.data, serialized.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_list_admin(self):
         self.user.is_superuser
         response = self.client.get(reverse('thread-list', kwargs=self.kwargs))
-        serialized = serializers.ThreadAdminSerializer(self.thread_list, many=True)
+        serialized = serializers.ThreadAdminListSerializer(self.thread_list, many=True)
         self.assertEqual(response.data, serialized.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
