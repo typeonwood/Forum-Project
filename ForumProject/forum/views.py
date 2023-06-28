@@ -37,7 +37,7 @@ class CategoryDetailView(RetrieveUpdateDestroyAPIView):
 class ThreadListView(ListCreateAPIView):
     queryset = Thread.objects.all()
     serializer_class = ThreadAdminSerializer
-    ordering_fields = ['date_time_added', 'upvotes', 'replies']
+    ordering_fields = ['date_time_added', 'threadvotes', 'replies']
     search_fields = ['title', 'user', 'content']
     filterset_fields = {'date_time_added': ['gte', 'lte'], 'user': ['exact'], 'locked': ['exact']}
     def get_permissions(self):
@@ -49,11 +49,11 @@ class ThreadListView(ListCreateAPIView):
 
     def list(self, request, category=None):
         if self.request.user.is_superuser:
-            queryset = Thread.objects.filter(category=Category.objects.get(pk=category))
+            queryset = self.filter_queryset(self.get_queryset()).filter(category=Category.objects.get(pk=category))
             serialized = ThreadAdminListSerializer(queryset, many=True)
             return Response(serialized.data, status=status.HTTP_200_OK)
         else:
-            queryset = Thread.objects.filter(category=Category.objects.get(pk=category))
+            queryset = self.filter_queryset(self.get_queryset()).filter(category=Category.objects.get(pk=category))
             serialized = ThreadListSerializer(queryset, many=True)
             return Response(serialized.data, status=status.HTTP_200_OK)
         
@@ -76,7 +76,6 @@ class ThreadListView(ListCreateAPIView):
 
 class ThreadDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Thread.objects.all()
-    ordering_fields = ['date_time_added', 'upvotes']
     def get_permissions(self):
         if self.request.method == 'GET':
             self.permission_classes = [AllowAny]

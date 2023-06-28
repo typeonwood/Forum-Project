@@ -31,8 +31,8 @@ class ReplyOwnerSerializer(ModelSerializer):
         model = Reply
         fields = ['content']
 
-class ReplyAdminSerializer(ModelSerializer):
-    class Meta:
+class ReplyAdminSerializer(ReplyViewerSerializer):
+    class Meta(ReplyViewerSerializer.Meta):
         model = Reply
         fields = '__all__'
 
@@ -77,14 +77,14 @@ class ThreadAdminListSerializer(ThreadListSerializer):
         else: return 'No replies'
 
 
-class ThreadAdminSerializer(ModelSerializer):
+class ThreadAdminSerializer(ThreadListSerializer):
     replies = SerializerMethodField()
-    class Meta(ThreadViewerSerializer.Meta):
+    class Meta(ThreadListSerializer.Meta):
         model = Thread
         fields = ['id', 'title', 'category', 'user', 'date_time_added', 'locked', 'content', 'media_link', 'replies']
     def get_replies(self, obj):
         if Reply.objects.filter(thread=obj.id).exists():
-            queryset = Reply.objects.filter(thread=obj.id)
+            queryset = Reply.objects.filter(thread=obj.id).order_by('date_time_added')
             serialized = ReplyAdminSerializer(queryset, many=True)
             return serialized.data
         else:
