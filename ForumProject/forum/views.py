@@ -95,7 +95,7 @@ class ThreadDetailView(RetrieveUpdateDestroyAPIView):
 class ReplyListView(ListCreateAPIView):
     queryset = Reply.objects.all()
     serializer_class = ReplyAdminSerializer
-    ordering_fields = ['date_time_added', 'upvotes', 'replies']
+    ordering_fields = ['date_time_added', 'replyvotes', 'replies']
     search_fields = ['user', 'thread', 'content']
     filterset_fields = {'date_time_added': ['gte', 'lte'], 'user': ['exact'], 'thread': ['exact']}
     def get_permissions(self):
